@@ -1,9 +1,16 @@
 import fs from "fs";
 import type { Plugin } from "esbuild";
 
+export type ArgsConfig = {
+  config: string;
+  clean?: boolean;
+  silent?: boolean;
+};
+
 export type Config = Partial<{
   outDir: string;
   clean?: boolean;
+  silent?: boolean;
   tsConfigFile?: string;
   esbuild: {
     entryPoints?: string[];
@@ -19,16 +26,25 @@ export type Config = Partial<{
   };
 }>;
 
-export function readUserConfig(configPath: string): Config {
+export function readUserConfig(args: ArgsConfig): Config {
+  const { config: configPath, silent, clean } = args;
+  let configFromFile = {};
   if (fs.existsSync(configPath)) {
     try {
-      return require(configPath);
+      configFromFile = require(configPath);
     }
     catch (e) {
+      if (silent) {
+        throw e
+      }
       console.log("Config file has some errors:");
       console.error(e);
+      console.log("Using default config");
     }
+  } else if (!silent) {
+    console.log(
+      `Config file '${configPath}' does not exist, using default config`
+    );
   }
-  console.log("Using default config");
-  return {};
+  return { ...configFromFile, clean, silent };
 }

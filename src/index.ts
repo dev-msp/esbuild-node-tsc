@@ -7,16 +7,24 @@ import path from "path";
 import rimraf from "rimraf";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
-import { Config, readUserConfig } from "./config";
+import { Config, ArgsConfig, readUserConfig } from "./config";
 
 const cwd = process.cwd();
-const { argv } = yargs(hideBin(process.argv))
+const { argv }: { argv: ArgsConfig | Promise<ArgsConfig> } = yargs(
+  hideBin(process.argv)
+)
   .option("config", {
     describe: "path to config file",
     type: "string",
+    default: "etsc.config.js",
+    coerce: (configFileName: string) => path.resolve(cwd, configFileName),
   })
   .option("clean", {
     describe: "clean output directory before build",
+    type: "boolean",
+  })
+  .option("silent", {
+    describe: "suppress log output",
     type: "boolean",
   });
 
@@ -117,27 +125,29 @@ async function copyNonSourceFiles({
 }
 
 async function main() {
-  const configFilename = <string>(await argv)?.config || "etsc.config.js";
-  const clean = <boolean>(await argv)?.clean || false;
-  const config = await readUserConfig(path.resolve(cwd, configFilename));
-
+  const config = readUserConfig(await argv);
   const { outDir, esbuildOptions, assetsOptions } = getBuildMetadata(config);
 
-  if (clean) {
+  if (config.clean) {
     rimraf.sync(outDir);
   }
 
+  if (!config.silent) {
+    console.time("Built in");
+  }
   await Promise.all([
     buildSourceFiles(esbuildOptions),
     copyNonSourceFiles(assetsOptions),
   ]);
+
+  return config;
 }
 
-console.time("Built in");
-
 main()
-  .then(() => {
-    console.timeEnd("Built in");
+  .then(({ silent }) => {
+    if (!silent) {
+      console.timeEnd("Built in");
+    }
     process.exit(0);
   })
   .catch((err) => {
