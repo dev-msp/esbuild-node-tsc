@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from "fs";
 import type { Plugin } from "esbuild";
 
 export type Config = Partial<{
@@ -19,7 +19,7 @@ export type Config = Partial<{
   };
 }>;
 
-export async function readUserConfig(configPath: string): Promise<Config> {
+export function readUserConfig(configPath: string): Config {
   if (fs.existsSync(configPath)) {
     try {
       return require(configPath);
